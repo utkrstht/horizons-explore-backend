@@ -64,6 +64,7 @@ COMMENTS_FILE = BASE / "data" / "comments.json"
 COMMENT_REPORTS_FILE = BASE / "data" / "comment-reports.json"
 TOKENS_FILE = BASE / "data" / "tokens.json"
 
+(BASE / "data").mkdir(parents=True, exist_ok=True)
 for f in [REPORTS_FILE, COMMENTS_FILE, COMMENT_REPORTS_FILE]:
     if not f.exists() or f.stat().st_size == 0:
         f.write_text("[]", "utf-8")
