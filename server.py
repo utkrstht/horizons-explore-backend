@@ -314,7 +314,7 @@ def project_hours(project_id):
     try:
         req = Request(
             f"https://horizons.hackclub.com/api/reviewer/projects/{project_id}/hour-breakdown",
-            headers={"Cookie": f"session_id={SESSION_ID}"},
+            headers={"Cookie": f"sessionId={SESSION_ID}"},
         )
         with urlopen(req, timeout=10) as resp:
             data = json.loads(resp.read())
