@@ -307,7 +307,7 @@ def report_comment():
 
 @app.route("/admin")
 def admin_page():
-    return send_file(BASE.parent / "frontend" / "admin.html")
+    return (BASE / "admin.html").read_text(), 200, {"Content-Type": "text/html; charset=utf-8"}
 
 
 @app.route("/api/admin/check")

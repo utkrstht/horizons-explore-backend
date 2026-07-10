@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Horizons — Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --cream: #f3e8d8;
+  --black: #1a1a1a;
+  --accent: #ffa936;
+  --red: #ec3750;
+  --green: #33a06f;
+  --gray: #6b7280;
+  --orange: #ff8c37;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  background: var(--cream);
+  color: var(--black);
+  min-height: 100vh;
+}
+.admin-top {
+  padding: 28px 32px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.admin-top h1 { font-size: 24px; font-weight: 800; }
+.admin-top a {
+  font-size: 14px; font-weight: 700; color: var(--gray);
+  text-decoration: none; margin-left: auto;
+}
+.admin-top a:hover { color: var(--black); }
+.admin-top .admin-user { font-size: 14px; font-weight: 600; color: var(--gray); }
+.stripe {
+  position: absolute; left: -200px; width: 300%; height: 21px;
+  pointer-events: none; z-index: 0; transform: rotate(-9.8deg);
+  transform-origin: top left;
+}
+.s1 { background: #ffa936; top: 80px; }
+.s2 { background: #f86d95; top: 111px; }
+.s3 { background: #46467c; top: 142px; }
+.admin-wrap { padding: 20px 32px 40px; position: relative; z-index: 1; }
+.admin-status { font-size: 14px; font-weight: 700; padding: 10px 16px; border-radius: 10px; margin-bottom: 16px; }
+.admin-status.loading { background: rgba(0,0,0,0.05); color: var(--gray); }
+.admin-status.error { background: #fde8e8; color: var(--red); }
+.admin-status.success { background: #e8fde8; color: var(--green); }
+.admin-stats { display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
+.stat-box {
+  background: #fff; border: 2.5px solid var(--black); border-radius: 12px;
+  padding: 14px 20px; box-shadow: 3px 3px 0 0 var(--black);
+}
+.stat-box .num { font-size: 28px; font-weight: 800; }
+.stat-box .label { font-size: 13px; font-weight: 600; color: var(--gray); }
+.section { margin-bottom: 32px; }
+.section h2 { font-size: 18px; font-weight: 800; margin-bottom: 12px; }
+.admin-table {
+  width: 100%; border-collapse: collapse;
+  background: #fff; border: 2.5px solid var(--black); border-radius: 12px;
+  overflow: hidden; box-shadow: 3px 3px 0 0 var(--black);
+  font-size: 13px;
+}
+.admin-table th {
+  background: var(--black); color: #fff; font-weight: 700;
+  padding: 10px 12px; text-align: left; white-space: nowrap;
+}
+.admin-table td { padding: 10px 12px; border-top: 1px solid rgba(0,0,0,0.1); vertical-align: top; }
+.admin-table tr:hover td { background: rgba(0,0,0,0.02); }
+.admin-table .actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.admin-table button {
+  font-family: inherit; font-size: 11px; font-weight: 700; cursor: pointer;
+  padding: 5px 10px; border: 2px solid var(--black); border-radius: 6px;
+  background: #fff; transition: all 0.15s;
+}
+.admin-table button:hover { transform: scale(1.03); }
+.admin-table button:active { transform: scale(0.97); }
+.btn-dismiss { color: var(--gray); }
+.btn-dismiss:hover { background: var(--gray); color: #fff; border-color: var(--gray); }
+.btn-delete-comment { color: var(--orange); }
+.btn-delete-comment:hover { background: var(--orange); color: #fff; border-color: var(--orange); }
+.btn-delete-project { color: var(--red); }
+.btn-delete-project:hover { background: var(--red); color: #fff; border-color: var(--red); }
+.admin-table .comment-text-preview { max-width: 300px; overflow: hidden; text-overflow: ellipsis; }
+.admin-empty {
+  text-align: center; padding: 40px 20px; font-size: 15px; color: var(--gray);
+  background: #fff; border: 2.5px solid var(--black); border-radius: 12px;
+  box-shadow: 3px 3px 0 0 var(--black);
+}
+/* Auth wall */
+.auth-wall {
+  display: flex; align-items: center; justify-content: center; min-height: 100vh;
+  flex-direction: column; gap: 16px; text-align: center; padding: 24px;
+}
+.auth-wall h1 { font-size: 32px; font-weight: 800; }
+.auth-wall p { font-size: 16px; color: var(--gray); max-width: 400px; }
+.auth-wall a {
+  display: inline-block; font-family: inherit; font-size: 15px; font-weight: 700;
+  padding: 10px 24px; border: 3px solid var(--black); border-radius: 12px;
+  background: var(--red); color: #fff; cursor: pointer; text-decoration: none;
+  box-shadow: 3px 3px 0 0 var(--black); transition: transform 0.15s;
+}
+.auth-wall a:hover { transform: scale(1.03); }
+.auth-wall a:active { transform: scale(0.97); box-shadow: 1px 1px 0 0 var(--black); }
+@media (max-width: 600px) {
+  .admin-top { padding: 20px 18px 12px; }
+  .admin-top h1 { font-size: 20px; }
+  .admin-wrap { padding: 18px 14px 40px; }
+  .admin-table { font-size: 12px; }
+  .admin-table th, .admin-table td { padding: 8px 8px; }
+  .admin-table .comment-text-preview { max-width: 120px; }
+}
+</style>
+</head>
+<body>
+
+<div id="app"></div>
+
+<script>
+const ORIGIN = window.location.origin;
+
+// --- Token management ---
+function getToken() {
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get("token") || localStorage.getItem("adminToken");
+  if (params.get("token")) {
+    localStorage.setItem("adminToken", params.get("token"));
+    window.history.replaceState({}, "", window.location.pathname);
+  }
+  return token;
+}
+
+function apiHeaders() {
+  const h = { "Content-Type": "application/json" };
+  const t = getToken();
+  if (t) h["Authorization"] = `Bearer ${t}`;
+  return h;
+}
+
+// --- DOM helpers ---
+const $ = (s, p) => (p || document).querySelector(s);
+const $$ = (s, p) => [...(p || document).querySelectorAll(s)];
+
+function esc(s) {
+  const d = document.createElement("div");
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+// --- Actions ---
+async function dismissReport(type, index) {
+  if (!confirm("Dismiss this report?")) return;
+  try {
+    await fetch(`${ORIGIN}/api/admin/reports/dismiss`, {
+      method: "POST", headers: apiHeaders(),
+      body: JSON.stringify({ type, index }),
+    });
+    loadDashboard();
+  } catch { alert("Failed to dismiss report."); }
+}
+
+async function deleteComment(commentId) {
+  if (!confirm("Delete this comment permanently?")) return;
+  try {
+    await fetch(`${ORIGIN}/api/admin/comments/delete`, {
+      method: "POST", headers: apiHeaders(),
+      body: JSON.stringify({ commentId }),
+    });
+    loadDashboard();
+  } catch { alert("Failed to delete comment."); }
+}
+
+async function deleteProject(projectId) {
+  if (!confirm(`Delete project #${projectId} permanently? This will also dismiss all its reports.`)) return;
+  try {
+    await fetch(`${ORIGIN}/api/admin/projects/delete`, {
+      method: "POST", headers: apiHeaders(),
+      body: JSON.stringify({ projectId }),
+    });
+    loadDashboard();
+  } catch { alert("Failed to delete project."); }
+}
+
+// --- Load dashboard ---
+async function loadDashboard() {
+  const app = document.getElementById("app");
+  app.innerHTML = `<div class="admin-status loading">Loading reports...</div>`;
+
+  try {
+    const resp = await fetch(`${ORIGIN}/api/admin/reports`, { headers: apiHeaders() });
+    if (resp.status === 403) {
+      app.innerHTML = `<div class="admin-status error">Access denied. You are not an admin.</div>`;
+      return;
+    }
+    const data = await resp.json();
+    renderDashboard(data);
+  } catch {
+    app.innerHTML = `<div class="admin-status error">Failed to load reports. Is the server running?</div>`;
+  }
+}
+
+function renderDashboard(data) {
+  const pr = data.projectReports;
+  const cr = data.commentReports;
+  const total = pr.length + cr.length;
+
+  let html = `
+    <div class="admin-top">
+      <h1>Admin Dashboard</h1>
+      <span class="admin-user">${getToken() ? "Signed in" : "Not signed in"}</span>
+      <a href="/admin?token=${encodeURIComponent(getToken() || "")}">Refresh</a>
+      <a href="/">← Back to Directory</a>
+    </div>
+    <div class="admin-wrap">
+      <div class="admin-stats">
+        <div class="stat-box"><div class="num">${total}</div><div class="label">Total Reports</div></div>
+        <div class="stat-box"><div class="num">${pr.length}</div><div class="label">Project Reports</div></div>
+        <div class="stat-box"><div class="num">${cr.length}</div><div class="label">Comment Reports</div></div>
+      </div>
+  `;
+
+  // Project Reports
+  html += `<div class="section"><h2>Project Reports</h2>`;
+  if (pr.length === 0) {
+    html += `<div class="admin-empty">No project reports.</div>`;
+  } else {
+    html += `<table class="admin-table"><thead><tr>
+      <th>#</th><th>Project</th><th>Reason</th><th>Details</th><th>Contact</th><th>Date</th><th>Actions</th>
+    </tr></thead><tbody>`;
+    pr.forEach((r, i) => {
+      html += `<tr>
+        <td>${esc(String(r.projectId))}</td>
+        <td><strong>${esc(r.projectTitle)}</strong> (#${r.projectId})</td>
+        <td>${esc(r.reason)}</td>
+        <td>${esc((r.details || "").slice(0, 100))}${(r.details || "").length > 100 ? "..." : ""}</td>
+        <td>${esc(r.contact || "—")}</td>
+        <td>${new Date(r.timestamp).toLocaleDateString()}</td>
+        <td class="actions">
+          <button class="btn-dismiss" onclick="dismissReport('project', ${i})">Dismiss</button>
+          <button class="btn-delete-project" onclick="deleteProject(${r.projectId})">Delete Project</button>
+        </td>
+      </tr>`;
+    });
+    html += `</tbody></table>`;
+  }
+  html += `</div>`;
+
+  // Comment Reports
+  html += `<div class="section"><h2>Comment Reports</h2>`;
+  if (cr.length === 0) {
+    html += `<div class="admin-empty">No comment reports.</div>`;
+  } else {
+    html += `<table class="admin-table"><thead><tr>
+      <th>ID</th><th>Comment</th><th>Author</th><th>Project</th><th>Date</th><th>Actions</th>
+    </tr></thead><tbody>`;
+    cr.forEach((r, i) => {
+      html += `<tr>
+        <td>#${r.commentId}</td>
+        <td class="comment-text-preview">${esc(r.commentText)}</td>
+        <td>${esc(r.commentAuthor)}</td>
+        <td>#${r.projectId}</td>
+        <td>${new Date(r.timestamp).toLocaleDateString()}</td>
+        <td class="actions">
+          <button class="btn-dismiss" onclick="dismissReport('comment', ${i})">Dismiss</button>
+          <button class="btn-delete-comment" onclick="deleteComment(${r.commentId})">Delete Comment</button>
+        </td>
+      </tr>`;
+    });
+    html += `</tbody></table>`;
+  }
+  html += `</div>`;
+
+  html += `</div>`; // close admin-wrap
+  document.getElementById("app").innerHTML = html;
+}
+
+// --- Auth check and bootstrap ---
+async function init() {
+  const app = document.getElementById("app");
+  const token = getToken();
+
+  if (!token) {
+    app.innerHTML = `
+      <div class="auth-wall">
+        <h1>Admin Dashboard</h1>
+        <p>You need to sign in with Hack Club to access the admin panel.</p>
+        <a href="${ORIGIN}/api/auth/login">Sign in with Hack Club</a>
+      </div>
+    `;
+    return;
+  }
+
+  app.innerHTML = `<div class="admin-status loading">Checking access...</div>`;
+
+  try {
+    const resp = await fetch(`${ORIGIN}/api/admin/check`, { headers: apiHeaders() });
+    const data = await resp.json();
+    if (data.admin) {
+      loadDashboard();
+    } else {
+      app.innerHTML = `
+        <div class="auth-wall">
+          <h1>Access Denied</h1>
+          <p>Your Hack Club account is not authorized as an admin.</p>
+          <a href="/">← Back to Directory</a>
+        </div>
+      `;
+    }
+  } catch {
+    app.innerHTML = `
+      <div class="auth-wall">
+        <h1>Connection Error</h1>
+        <p>Could not connect to the server. Make sure the backend is running.</p>
+        <a href="/">← Back to Directory</a>
+      </div>
+    `;
+  }
+}
+
+init();
+</script>
+</body>
+</html>
