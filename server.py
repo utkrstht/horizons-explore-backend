@@ -11,7 +11,8 @@ from urllib.request import Request, urlopen
 from urllib.parse import urlencode
 import threading
 from dotenv import load_dotenv
-from scrape import scheduler_loop
+from scrape import scheduler_loop, main
+import asyncio
 
 load_dotenv()
 
@@ -56,6 +57,7 @@ HCA_CLIENT_SECRET = os.environ.get("HCA_CLIENT_SECRET", "")
 HCA_REDIRECT_URI = os.environ.get(
     "HCA_REDIRECT_URI", "http://localhost:6767/api/auth/callback"
 )
+SESSION_ID = os.environ.get("SESSION_ID", "")
 
 REPORTS_FILE = BASE / "data" / "reports.json"
 COMMENTS_FILE = BASE / "data" / "comments.json"
@@ -305,6 +307,21 @@ def report_comment():
     }])
     return jsonify({"ok": True})
 
+@app.route("/api/projects/<int:project_id>/hours")
+def project_hours(project_id):
+    if not SESSION_ID:
+        return jsonify({"hours": None})
+    try:
+        req = Request(
+            f"https://horizons.hackclub.com/api/reviewer/projects/{project_id}/hour-breakdown",
+            headers={"Cookie": f"session_id={SESSION_ID}"},
+        )
+        with urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read())
+        return jsonify(data)
+    except Exception:
+        return jsonify({"hours": None})
+
 @app.route("/api/admin/check")
 def admin_check():
     if not get_user():
@@ -389,5 +406,7 @@ def admin_delete_project():
 
 # scrape every day :p
 threading.Thread(target=scheduler_loop, daemon=True).start()
+
+asyncio.run(main())
 
 app.run(host="0.0.0.0", port=6767)
