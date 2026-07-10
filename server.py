@@ -10,6 +10,7 @@ from collections import defaultdict
 from urllib.request import Request, urlopen
 from urllib.parse import urlencode
 import threading
+import concurrent.futures
 from dotenv import load_dotenv
 from scrape import scheduler_loop, main
 import asyncio
@@ -321,6 +322,34 @@ def project_hours(project_id):
         return jsonify(data)
     except Exception:
         return jsonify({"hours": None})
+
+@app.route("/api/projects/hours", methods=["POST"])
+def projects_hours_batch():
+    if not SESSION_ID:
+        return jsonify({})
+    body = request.get_json(silent=True)
+    if not body or not isinstance(body.get("ids"), list):
+        return jsonify({})
+    ids = body["ids"]
+    if len(ids) > 50:
+        ids = ids[:50]
+    results = {}
+    def fetch_hours(pid):
+        try:
+            req = Request(
+                f"https://horizons.hackclub.com/api/reviewer/projects/{pid}/hour-breakdown",
+                headers={"Cookie": f"sessionId={SESSION_ID}"},
+            )
+            with urlopen(req, timeout=10) as resp:
+                data = json.loads(resp.read())
+            return pid, data.get("totalHours")
+        except Exception:
+            return pid, None
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as pool:
+        for pid, hours in pool.map(fetch_hours, ids):
+            if hours is not None:
+                results[str(pid)] = hours
+    return jsonify(results)
 
 @app.route("/api/admin/check")
 def admin_check():
