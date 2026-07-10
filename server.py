@@ -24,7 +24,6 @@ BASE = Path(__file__).parent
 _oauth_states = set()
 
 def _update_json(path, fn):
-    """Atomically read JSON, apply fn(data), and write back."""
     with _file_lock:
         raw = path.read_bytes()
         data = json.loads(raw) if raw.strip() else ({} if path.name == "tokens.json" else [])
@@ -33,7 +32,6 @@ def _update_json(path, fn):
         return result
 
 def _read_json(path):
-    """Thread-safe JSON read."""
     with _file_lock:
         raw = path.read_bytes()
         return json.loads(raw) if raw.strip() else ({} if path.name == "tokens.json" else [])
@@ -63,6 +61,7 @@ REPORTS_FILE = BASE / "data" / "reports.json"
 COMMENTS_FILE = BASE / "data" / "comments.json"
 COMMENT_REPORTS_FILE = BASE / "data" / "comment-reports.json"
 TOKENS_FILE = BASE / "data" / "tokens.json"
+ADMINS_FILE = BASE / "data" / "admins.json"
 
 (BASE / "data").mkdir(parents=True, exist_ok=True)
 for f in [REPORTS_FILE, COMMENTS_FILE, COMMENT_REPORTS_FILE]:
@@ -70,6 +69,8 @@ for f in [REPORTS_FILE, COMMENTS_FILE, COMMENT_REPORTS_FILE]:
         f.write_text("[]", "utf-8")
 if not TOKENS_FILE.exists() or TOKENS_FILE.stat().st_size == 0:
     TOKENS_FILE.write_text("{}", "utf-8")
+if not ADMINS_FILE.exists() or ADMINS_FILE.stat().st_size == 0:
+    ADMINS_FILE.write_text("[]", "utf-8")
 
 BAD_WORDS = [
     "shit", "ass", "bitch", "crap", "dick", "bastard",
@@ -97,6 +98,13 @@ def get_user():
     except (json.JSONDecodeError, OSError):
         tokens = {}
     return tokens.get(token)
+
+def is_admin():
+    user = get_user()
+    if not user:
+        return False
+    admins = _read_json(ADMINS_FILE)
+    return user.get("slack_id") in admins
 
 @app.after_request
 def cors(resp):
@@ -296,6 +304,93 @@ def report_comment():
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }])
     return jsonify({"ok": True})
+
+@app.route("/admin")
+def admin_page():
+    return send_file(BASE.parent / "frontend" / "admin.html")
+
+
+@app.route("/api/admin/check")
+def admin_check():
+    if not get_user():
+        return jsonify({"admin": False})
+    return jsonify({"admin": is_admin()})
+
+
+@app.route("/api/admin/reports")
+def admin_reports():
+    if not is_admin():
+        return jsonify({"ok": False, "error": "Forbidden"}), 403
+    project_reports = _read_json(REPORTS_FILE)
+    comment_reports = _read_json(COMMENT_REPORTS_FILE)
+    comments = _read_json(COMMENTS_FILE)
+    projects = _read_json(BASE / "data" / "projects.json")
+
+    comment_lookup = {c["id"]: c for c in comments}
+    enriched_comment_reports = []
+    for r in comment_reports:
+        cr = dict(r)
+        c = comment_lookup.get(r["commentId"])
+        cr["commentText"] = c["text"] if c else "[deleted]"
+        cr["commentAuthor"] = c["username"] if c else "[deleted]"
+        enriched_comment_reports.append(cr)
+
+    project_lookup = {p["projectId"]: p for p in projects}
+    enriched_project_reports = []
+    for r in project_reports:
+        pr = dict(r)
+        p = project_lookup.get(r["projectId"])
+        pr["projectTitle"] = p["projectTitle"] if p else "[deleted]"
+        enriched_project_reports.append(pr)
+
+    return jsonify({
+        "projectReports": enriched_project_reports,
+        "commentReports": enriched_comment_reports,
+    })
+
+
+@app.route("/api/admin/reports/dismiss", methods=["POST"])
+def admin_dismiss_report():
+    if not is_admin():
+        return jsonify({"ok": False, "error": "Forbidden"}), 403
+    body = request.get_json(silent=True)
+    if not body or not body.get("type") or body.get("index") is None:
+        return jsonify({"ok": False, "error": "type and index required"}), 400
+    if body["type"] == "project":
+        _update_json(REPORTS_FILE, lambda r: [x for i, x in enumerate(r) if i != body["index"]])
+    elif body["type"] == "comment":
+        _update_json(COMMENT_REPORTS_FILE, lambda r: [x for i, x in enumerate(r) if i != body["index"]])
+    else:
+        return jsonify({"ok": False, "error": "Invalid type"}), 400
+    return jsonify({"ok": True})
+
+
+@app.route("/api/admin/comments/delete", methods=["POST"])
+def admin_delete_comment():
+    if not is_admin():
+        return jsonify({"ok": False, "error": "Forbidden"}), 403
+    body = request.get_json(silent=True)
+    if not body or not body.get("commentId"):
+        return jsonify({"ok": False, "error": "commentId required"}), 400
+    comment_id = body["commentId"]
+    _update_json(COMMENTS_FILE, lambda c: [x for x in c if x["id"] != comment_id])
+    _update_json(COMMENT_REPORTS_FILE, lambda r: [x for x in r if x["commentId"] != comment_id])
+    return jsonify({"ok": True})
+
+
+@app.route("/api/admin/projects/delete", methods=["POST"])
+def admin_delete_project():
+    if not is_admin():
+        return jsonify({"ok": False, "error": "Forbidden"}), 403
+    body = request.get_json(silent=True)
+    if not body or not body.get("projectId"):
+        return jsonify({"ok": False, "error": "projectId required"}), 400
+    project_id = body["projectId"]
+    _update_json(BASE / "data" / "projects.json", lambda p: [x for x in p if x["projectId"] != project_id])
+    _update_json(REPORTS_FILE, lambda r: [x for x in r if x["projectId"] != project_id])
+    _update_json(COMMENT_REPORTS_FILE, lambda r: [x for x in r if x["projectId"] != project_id])
+    return jsonify({"ok": True})
+
 
 # scrape every day :p
 threading.Thread(target=scheduler_loop, daemon=True).start()
