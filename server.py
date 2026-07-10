@@ -305,23 +305,6 @@ def report_comment():
     }])
     return jsonify({"ok": True})
 
-FRONTEND_DIR = BASE.parent / "frontend"
-
-@app.route("/admin")
-def admin_page():
-    html = (FRONTEND_DIR / "admin.html").read_text()
-    html = html.replace("</head>", f"<script>window.FRONTEND_ORIGIN={json.dumps(FRONTEND_ORIGIN)};</script></head>")
-    return html, 200, {"Content-Type": "text/html; charset=utf-8"}
-
-@app.route("/admin.css")
-def admin_css():
-    return (FRONTEND_DIR / "admin.css").read_text(), 200, {"Content-Type": "text/css; charset=utf-8"}
-
-@app.route("/admin.js")
-def admin_js():
-    return (FRONTEND_DIR / "admin.js").read_text(), 200, {"Content-Type": "text/javascript; charset=utf-8"}
-
-
 @app.route("/api/admin/check")
 def admin_check():
     if not get_user():
