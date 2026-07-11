@@ -229,7 +229,7 @@ def auth_callback():
                 pass
         user_info = {
             "slack_id": slack_id,
-            "name": display_name or user_data.get("nickname") or user_data.get("name") or (user_data.get("email") or "Hacker").split("@")[0],
+            "name": display_name,
             "email": user_data.get("email", ""),
         }
         session_token = secrets.token_urlsafe(32)
