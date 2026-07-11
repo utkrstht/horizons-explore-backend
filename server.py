@@ -223,10 +223,12 @@ def auth_callback():
             try:
                 cachet_req = Request(f"https://cachet.dunkirk.sh/users/{slack_id}")
                 with urlopen(cachet_req) as resp:
-                    cachet_data = json.loads(resp.read())
+                    raw = resp.read()
+                    print("CACHET RESPONSE:", raw[:1000])
+                    cachet_data = json.loads(raw)
                     display_name = cachet_data.get("displayName", "")
-            except Exception:
-                pass
+            except Exception as e:
+                print("CACHET ERROR:", e)
         user_info = {
             "slack_id": slack_id,
             "name": display_name,
