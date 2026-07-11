@@ -221,7 +221,13 @@ def auth_callback():
         display_name = ""
         if slack_id:
             try:
-                cachet_req = Request(f"https://cachet.dunkirk.sh/users/{slack_id}")
+                cachet_req = Request(
+                    f"https://cachet.dunkirk.sh/users/{slack_id}",
+                    headers={
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:152.0) Gecko/20100101 Firefox/152.0",
+                        "Accept": "application/json",
+                    },
+                )
                 with urlopen(cachet_req) as resp:
                     raw = resp.read()
                     print("CACHET RESPONSE:", raw[:1000])
